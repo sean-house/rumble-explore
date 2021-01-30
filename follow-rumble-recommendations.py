@@ -182,16 +182,17 @@ class RumbleFollower():
             except IndexError:
                 pass
 
-        # # Channel
-        # channel = ''
-        # for item_section in soup.findAll('a', {'class': 'yt-uix-sessionlink'}):
-        #     if item_section['href'] and '/channel/' in item_section['href'] and item_section.contents[0] != '\n':
-        #         channel = item_section.contents[0]
-        #         channel_id = item_section['href'].split('/channel/')[1]
-        #         break
-        #
-        # if channel == '':
-        #     print('WARNING: CHANNEL not found')
+        # Channel
+        channel = ''
+        items = soup.findAll('a', {'class': 'media-by--a'})
+        for item_section in items:
+            try:
+                channel = item_section.contents[3].contents[0].strip()
+            except IndexError:
+                pass
+
+        if channel == '':
+            print('WARNING: CHANNEL not found')
 
         # Recommendations
         recos = []
@@ -220,20 +221,18 @@ class RumbleFollower():
         if video_id not in self._video_infos:
             self._video_infos[video_id] = {'views': views,
                                            'likes': likes,
-                                           #'dislikes': dislikes,
                                            'recommendations': recos,
                                            'title': title,
                                            'depth': depth,
                                            'id': video_id,
-                                           #'channel': channel,
+                                           'channel': channel,
                                            'pubdate': pubdate,
-                                           #'duration': duration,
                                            'key': []}
             if self._loopok:
                 self._video_infos[video_id]['key'].append(key)
 
         video = self._video_infos[video_id]
-        print(video_id + ': ' + video['title'] + '  {' + repr(key) +'} ' + str(video['views']) + ' views , recommendations:' + repr(len(recos)))
+        print(f"{video_id}: {video['title']} - [{channel}] - {{{key}}} - {video['views']} views; {len(recos)} recommendations")
         return recos[:nb_recos_wanted]
 
     def get_n_recommendations(self, seed, branching, depth, key):
@@ -257,7 +256,7 @@ class RumbleFollower():
         for video in search_results:
             ind += 1
             all_recos.extend(self.get_n_recommendations(video, branching, depth, str(ind)))
-            print ('\n\n\nNext search: ')
+            print('\n\n\nNext search: ')
         all_recos.extend(search_results)
         return all_recos
 
@@ -299,7 +298,7 @@ class RumbleFollower():
     def like_ratio_is_computed(self, video):
         return int(video['likes']) > MIN_LIKES_FOR_LIKE_RATIO
 
-    def print_graph(self, links_per_video, only_mature_videos=True):
+    def print_graph(self, links_per_video, keyword):
         """
             Prints a file with a graph containing all videos.
         """
@@ -312,9 +311,10 @@ class RumbleFollower():
             if self.like_ratio_is_computed(video):
                 popularity = 0
             else:
-                popularity = video['likes'] / float(video['likes'] + video['dislikes'])
+                popularity = video['likes']
 
-            nodes.append({'id': video_id, 'size': input_links_counts.get(video_id, 0), 'popularity': popularity, 'type': 'circle', 'likes': video['likes'], 'dislikes': video['dislikes'], 'views': video['views'], 'depth': video['depth']})
+            nodes.append({'id': video_id, 'size': input_links_counts.get(video_id, 0), 'popularity': popularity,
+                          'type': 'circle', 'likes': video['likes'], 'views': video['views'], 'depth': video['depth']})
             link = 0
             for reco in self._video_infos[video_id]['recommendations']:
                 if reco in self._video_infos:
@@ -324,12 +324,10 @@ class RumbleFollower():
                         break
         graph['nodes'] = nodes
         graph['links'] = links
-        with open('./graph-' + self._name + '.json', 'w') as fp:
-            json.dump(graph, fp)
         date = time.strftime('%Y-%m-%d')
-        with open('./graph-' + self._name + '-' + date + '.json', 'w') as fp:
+        with open('./graph-viz/' + self._name + '-' + date + '-' + keyword + '.json', 'w') as fp:
             json.dump(graph, fp)
-        print(('Wrote graph as: ' + './graph-' + self._name + '-' + date + '.json'))
+        print('Wrote graph as: ' + './graph-viz' + self._name + '-' + date + '-' + keyword + '.json')
 
 
     def print_videos(self, videos, counts, max_length):
@@ -366,7 +364,7 @@ class RumbleFollower():
             video['mult'] = video['nb_recommendations'] / avg
         return video_infos[:max_length_count]
 
-def compare_keywords(query, search_results, branching, depth, name, gl, language, recent, loopok, alltime):
+def compare_keywords(query, search_results, branching, depth, name, gl, language, recent, loopok, alltime, makehtml):
     """
         Splits the query into keywords around commas and runs a scrapping from each keyword.
     """
@@ -385,8 +383,13 @@ def compare_keywords(query, search_results, branching, depth, name, gl, language
         yf.print_videos(top_recommended, counts, 50)
         yf.save_video_infos(name + '-' + keyword)
 
-    with open(file_name, 'w') as fp:
+        if makehtml:
+            yf.print_graph(10, keyword)
+
+    with open(f"{file_name}", 'w') as fp:
         json.dump(top_videos, fp)
+
+
 
 def main():
     global parser
@@ -402,16 +405,17 @@ def main():
     parser.add_argument('--recent', default=False, type=bool, help='Keep only videos that have less than 1000 views')
     parser.add_argument('--loopok', default=False, type=bool, help='Never loops back to the same videos.')
     parser.add_argument('--makehtml', default=False, type=bool,
-        help='If true, writes a .html page with the name which compare most recommended videos and top rated ones.')
+        help='NOT IMPLEMENTED: If true, writes a .html page with the name which compare most recommended videos and top rated ones.')
 
     args = parser.parse_args()
 
     if args.loopok:
-        print(('INFO We will print keys - ' + repr(args.loopok)))
+        print('INFO We will print keys - ' + repr(args.loopok))
     else:
-        print(('INFO We will NOT be printing keys - ' + repr(args.loopok)))
+        print('INFO We will NOT be printing keys - ' + repr(args.loopok))
 
-    compare_keywords(args.query, args.searches, args.branch, args.depth, args.name, args.gl, args.language, args.recent, args.loopok, args.alltime)
+    compare_keywords(args.query, args.searches, args.branch, args.depth, args.name, args.gl, args.language,
+                     args.recent, args.loopok, args.alltime, args.makehtml)
     return 0
 
 if __name__ == "__main__":
