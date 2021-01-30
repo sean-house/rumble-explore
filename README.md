@@ -1,8 +1,8 @@
-# Exploring YouTube recommendations
+# Exploring Rumble recommendations
 
-Where does YouTube's recommendation algorithm bring the user if he follows the recommendations?
-This robot follows the recommendations on YouTube from a given search query to find out where they bring you.
-After searching on YouTube and following the recommendations, it prints the 50 most recommended videos.
+Where does Rumble's recommendation algorithm bring the user if he follows the recommendations?
+This robot follows the recommendations on Rumble from a given search query to find out where they bring you.
+After searching on Rumble and following the recommendations, it prints the 50 most recommended videos.
 
 ## Installation
 
@@ -18,9 +18,9 @@ Used dependencies:
 
 ## Example of usage:
 
-python2.7 follow-youtube-recommendations.py  --query="global warming,vaccines,nasa" --searches=4 --branch=4 --depth=4 --name="science"
+python3 follow-rumble-recommendations.py  --query="global warming,vaccines,nasa" --searches=4 --branch=4 --depth=4 --name="science"
 
-* --query: query that is made on youtube
+* --query: query that is made on Rumble
 * --searches: number of search results from the query to start with
 * --branch: branching factor = number of recommendations that are followed
 * --name: name under which it will be saved
